@@ -84,51 +84,104 @@ namespace Mapper.Benchmark
 
         private bool ManualMapper(UserInfoSource s, UserInfoTarget t)
         {
-            var same = t.Address == s.Address &&
-                t.Age == s.Age &&
-                t.City == s.City &&
-                t.CreatedAt == s.DateCreated &&
-                t.Department == s.Department &&
-                t.Education == s.Education &&
-                t.Email == s.Email &&
-                t.ExperienceInYears == s.ExperienceInYears &&
-                t.Id == s.PK &&
-                t.Active == s.IsActive &&
-                t.IsEmployed == s.IsEmployed &&
-                t.JobTitle == SomeHelper.MapToJobTitle(s.JobTitle) &&
-                t.LastLogin == s.LastLogin &&
-                t.Name == s.FullName &&
-                t.Nationality == s.Nationality &&
-                t.PhoneNumber == s.Phone &&
-                t.Salary == s.Salary &&
-                t.Notes == s.Notes &&
-                t.Web == (Uri.TryCreate(s.Uri, new UriCreationOptions(), out Uri? uriRes) ? uriRes : null);
-
-            if (!same)
+            var changed = false;
+            if (t.Address != s.Address)
             {
+                changed = true;
                 t.Address = s.Address;
-                t.Age = s.Age;
-                t.City = s.City;
-                t.CreatedAt = s.DateCreated;
-                t.Department = s.Department;
-                t.Education = s.Education;
-                t.Email = s.Email;
-                t.ExperienceInYears = s.ExperienceInYears;
-                t.Id = s.PK;
-                t.Active = s.IsActive;
-                t.IsEmployed = s.IsEmployed;
-                t.JobTitle = SomeHelper.MapToJobTitle(s.JobTitle);
-                t.LastLogin = s.LastLogin;
-                t.Name = s.FullName;
-                t.Nationality = s.Nationality;
-                t.PhoneNumber = s.Phone;
-                t.Salary = s.Salary;
-                t.Notes = s.Notes;
-                t.Web = Uri.TryCreate(s.Uri, new UriCreationOptions(), out Uri? uriResult) ? uriResult : null;
-
-                return true;
             }
-            return false;
+            if (t.Age != s.Age)
+            {
+                changed = true;
+                t.Age = s.Age;
+            }
+            if (t.City != s.City)
+            {
+                changed = true;
+                t.City = s.City;
+            }
+            if (t.CreatedAt != s.DateCreated)
+            {
+                changed = true;
+                t.CreatedAt = s.DateCreated;
+            }
+            if (t.Department != s.Department)
+            {
+                changed = true;
+                t.Department = s.Department;
+            }
+            if (t.Education != s.Education)
+            {
+                changed = true;
+                t.Education = s.Education;
+            }
+            if (t.Email != s.Email)
+            {
+                changed = true;
+                t.Email = s.Email;
+            }
+            if (t.ExperienceInYears != s.ExperienceInYears)
+            {
+                changed = true;
+                t.ExperienceInYears = s.ExperienceInYears;
+            }
+            if (t.Id != s.PK)
+            {
+                changed = true;
+                t.Id = s.PK;
+            }
+            if (t.Active != s.IsActive)
+            {
+                changed = true;
+                t.Active = s.IsActive;
+            }
+            if (t.IsEmployed != s.IsEmployed)
+            {
+                changed = true;
+                t.IsEmployed = s.IsEmployed;
+            }
+            if (t.JobTitle != SomeHelper.MapToJobTitle(s.JobTitle))
+            {
+                changed = true;
+                t.JobTitle = SomeHelper.MapToJobTitle(s.JobTitle);
+            }
+            if (t.LastLogin != s.LastLogin)
+            {
+                changed = true;
+                t.LastLogin = s.LastLogin;
+            }
+            if (t.Name != s.FullName)
+            {
+                changed = true;
+                t.Name = s.FullName;
+            }
+            if (t.Nationality != s.Nationality)
+            {
+                changed = true;
+                t.Nationality = s.Nationality;
+            }
+            if (t.PhoneNumber != s.Phone)
+            {
+                changed = true;
+                t.PhoneNumber = s.Phone;
+            }
+            if (t.Salary != s.Salary)
+            {
+                changed = true;
+                t.Salary = s.Salary;
+            }
+            if (t.Notes != s.Notes)
+            {
+                changed = true;
+                t.Notes = s.Notes;
+            }
+            if (t.Web != (Uri.TryCreate(s.Uri, new UriCreationOptions(), out Uri? uriResX) ? uriResX : null))
+            {
+                changed = true;
+                t.Web = (Uri.TryCreate(s.Uri, new UriCreationOptions(), out Uri? uriRes) ? uriRes : null);
+            }
+
+            return changed;
         }
 
         public static void Main()
