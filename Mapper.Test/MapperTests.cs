@@ -257,5 +257,19 @@ namespace Mapper.Test
 
             Assert.False(changed);
         }
+
+        [Fact]
+        public void Can_Map_Different_Class_Instance()
+        {
+            var target = new Target { Cat = new Cat { Name = "Peter", Color = "Yellow", Height = 1 } };
+
+            var changed = new Mapper<Source, Target>()
+                .ForMember(t => t.Cat, s => s.Cat)
+                .Build()
+                .Map(source, target);
+
+            Assert.True(changed);
+            Assert.Equal(target.Cat.Name, source.Cat.Name);
+        }
     }
 }
