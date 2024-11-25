@@ -71,38 +71,61 @@ namespace Mapper.Benchmark
         }
 
         [Benchmark]
-        public void TestMapper()
+        public void Expression_Based_Mapping_Code()
         {
             mapper.Map(source, targetMapper);
         }
 
         [Benchmark]
-        public void TestManual()
+        public void Manually_Written_Mapping_Code()
         {
             ManualMapper(source, targetManual);
         }
 
         private void ManualMapper(UserInfoSource s, UserInfoTarget t)
         {
-            t.Address = s.Address;
-            t.Age = s.Age;
-            t.City = s.City;
-            t.CreatedAt = s.DateCreated;
-            t.Department = s.Department;
-            t.Education = s.Education;
-            t.Email = s.Email;
-            t.ExperienceInYears = s.ExperienceInYears;
-            t.Id = s.PK;
-            t.Active = s.IsActive;
-            t.IsEmployed = s.IsEmployed;
-            t.JobTitle = SomeHelper.MapToJobTitle(s.JobTitle);
-            t.LastLogin = s.LastLogin;
-            t.Name = s.FullName;
-            t.Nationality = s.Nationality;
-            t.PhoneNumber = s.Phone;
-            t.Salary = s.Salary;
-            t.Notes = s.Notes;
-            t.Web = Uri.TryCreate(s.Uri, new UriCreationOptions(), out Uri? uriResult) ? uriResult : null;
+            var same = t.Address != s.Address &&
+                t.Age != s.Age &&
+                t.City != s.City &&
+                t.CreatedAt != s.DateCreated &&
+                t.Department != s.Department &&
+                t.Education != s.Education &&
+                t.Email != s.Email &&
+                t.ExperienceInYears != s.ExperienceInYears &&
+                t.Id != s.PK &&
+                t.Active != s.IsActive &&
+                t.IsEmployed != s.IsEmployed &&
+                t.JobTitle != SomeHelper.MapToJobTitle(s.JobTitle) &&
+                t.LastLogin != s.LastLogin &&
+                t.Name != s.FullName &&
+                t.Nationality != s.Nationality &&
+                t.PhoneNumber != s.Phone &&
+                t.Salary != s.Salary &&
+                t.Notes != s.Notes &&
+                t.Web != (Uri.TryCreate(s.Uri, new UriCreationOptions(), out Uri? uriRes) ? uriRes : null);
+
+            if (!same)
+            {
+                t.Address = s.Address;
+                t.Age = s.Age;
+                t.City = s.City;
+                t.CreatedAt = s.DateCreated;
+                t.Department = s.Department;
+                t.Education = s.Education;
+                t.Email = s.Email;
+                t.ExperienceInYears = s.ExperienceInYears;
+                t.Id = s.PK;
+                t.Active = s.IsActive;
+                t.IsEmployed = s.IsEmployed;
+                t.JobTitle = SomeHelper.MapToJobTitle(s.JobTitle);
+                t.LastLogin = s.LastLogin;
+                t.Name = s.FullName;
+                t.Nationality = s.Nationality;
+                t.PhoneNumber = s.Phone;
+                t.Salary = s.Salary;
+                t.Notes = s.Notes;
+                t.Web = Uri.TryCreate(s.Uri, new UriCreationOptions(), out Uri? uriResult) ? uriResult : null;
+            }
         }
 
         public static void Main()

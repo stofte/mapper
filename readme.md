@@ -43,3 +43,19 @@ Since `Mapper` uses expression trees there's alot of [limitations](https://learn
 Other limitations:
 
 - Regular in-equality (`!=`) is used to determine if values are different between source and target.
+
+## Benchmarks
+
+Performance is measured against regular "hand-written" code which does the same thing as the mapper, by first checking for any difference in members, and then updates them all if a difference is found.
+
+    BenchmarkDotNet v0.13.10, Windows 11 (10.0.22621.2715/22H2/2022Update/SunValley2)
+    12th Gen Intel Core i5-1240P, 1 CPU, 16 logical and 12 physical cores
+    .NET SDK 7.0.404
+      [Host]     : .NET 7.0.14 (7.0.1423.51910), X64 RyuJIT AVX2
+      DefaultJob : .NET 7.0.14 (7.0.1423.51910), X64 RyuJIT AVX2
+
+
+| Method                        | Mean     | Error    | StdDev   |
+|------------------------------ |---------:|---------:|---------:|
+| Expression_Based_Mapping_Code | 97.45 ns | 0.851 ns | 2.022 ns |
+| Manually_Written_Mapping_Code | 97.68 ns | 1.754 ns | 1.950 ns |
