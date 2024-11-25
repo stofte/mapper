@@ -98,15 +98,35 @@ namespace Mapper.Test
         [Fact]
         public void Detect_If_No_Change_Was_Made()
         {
-            var target = new Target { IntProp = source.IntProp };
+            var target = new Target { IntProp = source.IntProp, StringProp = source.StringProp };
 
-            var changed = new Mapper<Source, Target>()
+            var m = new Mapper<Source, Target>()
+                .ForMember(t => t.StringProp, s => s.StringProp)
                 .ForMember(t => t.IntProp, s => s.IntProp)
-                .Build()
-                .Map(source, target);
+                .Build();
+
+            var changed = m.Map(source, target);
 
             Assert.False(changed);
             Assert.Equal(target.IntProp, source.IntProp);
+            Assert.Equal(target.StringProp, source.StringProp);
+        }
+
+        [Fact]
+        public void Detect_Change_Was_Made()
+        {
+            var target = new Target { IntProp = source.IntProp, StringProp = "target" };
+
+            var m = new Mapper<Source, Target>()
+                .ForMember(t => t.StringProp, s => s.StringProp)
+                .ForMember(t => t.IntProp, s => s.IntProp)
+                .Build();
+
+            var changed = m.Map(source, target);
+
+            Assert.True(changed);
+            Assert.Equal(target.IntProp, source.IntProp);
+            Assert.Equal(target.StringProp, source.StringProp);
         }
 
         [Fact]

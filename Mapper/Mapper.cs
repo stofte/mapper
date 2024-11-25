@@ -16,7 +16,7 @@ namespace Mapper
         IDictionary<Expression, Expression> mapsExpressions = new Dictionary<Expression, Expression>();
 
         Action<TSource, TTarget>? mapAction = null;
-        Func<TSource, TTarget, bool>? diffAction = null;
+        Func<TSource, TTarget, bool>? equalsAction = null;
 
         /// <summary>
         /// Define a mapping from the source type to the target type. Certain limitations apply due to the usage of Expression Trees.
@@ -32,12 +32,12 @@ namespace Mapper
         /// </summary>
         public bool Map(TSource source, TTarget target)
         {
-            if (mapAction == null || diffAction == null)
+            if (mapAction == null || equalsAction == null)
             {
                 throw new InvalidOperationException("Mapper not built");
             }
 
-            if (diffAction(source, target))
+            if (!equalsAction(source, target))
             {
                 mapAction(source, target);
                 return true;
@@ -85,14 +85,14 @@ namespace Mapper
                 }
 
                 AddAssignment(exprList, newTarget, newSource);
-                equalsEs = Expression.AndAlso(equalsEs, Expression.NotEqual(newTarget, newSource));
+                equalsEs = Expression.AndAlso(equalsEs, Expression.Equal(newTarget, newSource));
             }
 
             var mapLambda = Expression.Lambda<Action<TSource, TTarget>>(Expression.Block(exprList), new ParameterExpression[] { sourceParameter, targetParameter });
             mapAction = mapLambda.Compile();
 
-            var diffLambda = Expression.Lambda<Func<TSource, TTarget, bool>>(equalsEs, new ParameterExpression[] { sourceParameter, targetParameter });
-            diffAction = diffLambda.Compile();
+            var equalsLambda = Expression.Lambda<Func<TSource, TTarget, bool>>(equalsEs, new ParameterExpression[] { sourceParameter, targetParameter });
+            equalsAction = equalsLambda.Compile();
 
             return this;
         }
