@@ -15,7 +15,7 @@ namespace Mapper
     public class Mapper<TSource, TTarget>
     {
         List<MemberMappingConfiguration> mapList = new List<MemberMappingConfiguration>();
-        object[] comparerList = new object[0];
+        object[] comparerList = Array.Empty<object>();
 
         Delegate? mapAction = null;
 
@@ -115,7 +115,7 @@ namespace Mapper
                     }
                 }
 
-                Expression condition = null;
+                Expression? condition = null;
                 if (map.Comparer == null)
                 {
                     // This is when we just do straight "x == y" for comparison
