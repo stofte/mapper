@@ -50,7 +50,6 @@ namespace Mapper.Test
         [Fact]
         public void Throws_InvalidOperationException_If_Assigning_To_ReadOnly_Member()
         {
-            var target = new Target();
             var m = new Mapper<Source, Target>()
                 .ForMember(t => t.IntPropReadOnly, s => s.IntProp);
 
@@ -60,7 +59,6 @@ namespace Mapper.Test
         [Fact]
         public void Throws_InvalidOperationException_If_Mapping_Incompatible_Types()
         {
-            var target = new Target();
             var m = new Mapper<Source, Target>()
                 .ForMember(t => t.IntProp, s => s.FloatProp);
 
@@ -316,9 +314,60 @@ namespace Mapper.Test
 
             Assert.Single(diffList);
             var diff = diffList.Single();
-            Assert.Equal("IntField", diff.Name);
+            Assert.Equal(nameof(target.IntField), diff.Name);
             Assert.Equal(0, diff.Target);
             Assert.Equal(42, diff.Source);
+        }
+
+        [Fact]
+        public void Can_AutoMap_All_Properties_On_Own_Class()
+        {
+            // IntProp, DateTimeProp only should differ
+            var n = DateTime.Now;
+            var source = new Source { IntProp = 42, DateTimeProp = n, StringProp = "source" };
+            var target = new Source { StringProp = source.StringProp };
+
+            var diffList = new Mapper<Source, Source>()
+                .AutoMap()
+                .Build()
+                .Diff(source, target);
+
+            Assert.Equal(2, diffList.Count());
+            var first = diffList.First();
+            var second = diffList.Last();
+
+            Assert.Equal(nameof(Source.IntProp), first.Name);
+            Assert.Equal(0, first.Target);
+            Assert.Equal(42, first.Source);
+
+            Assert.Equal(nameof(Source.DateTimeProp), second.Name);
+            Assert.Equal(default(DateTime), second.Target);
+            Assert.Equal(n, second.Source);
+        }
+
+        [Fact]
+        public void Can_Exclude_Fields_In_AutoMap_On_Own_Class()
+        {
+            var source = new Source { IntProp = 42, StringProp = "source" };
+            var target = new Source { StringProp = source.StringProp };
+
+            var diffList = new Mapper<Source, Source>()
+                .AutoMap()
+                .Except(t => t.IntProp)
+                .Build()
+                .Diff(source, target);
+
+            Assert.Empty(diffList);
+        }
+
+        [Fact]
+        public void Throws_InvalidOperationException_If_Invoking_Mapping_Method_After_Build()
+        {
+            var mapper = new Mapper<Source, Target>()
+                .ForMember(t => t.DateTimeProp, s => s.DateTimeProp)
+                .Build();
+
+            Assert.Throws<InvalidOperationException>(() => mapper.ForMember(t => t.StringProp, s => s.StringProp));
         }
     }
 }

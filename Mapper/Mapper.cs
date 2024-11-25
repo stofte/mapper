@@ -16,9 +16,20 @@ namespace Mapper
     {
         List<MemberMappingConfiguration> mapList = new List<MemberMappingConfiguration>();
         object[] comparerList = Array.Empty<object>();
+        List<MemberInfo> autoMapExceptions = new List<MemberInfo>();
 
         Delegate? mapAction = null;
         Delegate? diffAction = null;
+        bool autoMapCalled = false;
+        bool strictAutoMap = false;
+        readonly ParameterExpression targetParameter;
+        readonly ParameterExpression sourceParameter;
+
+        public Mapper()
+        {
+            targetParameter = Expression.Parameter(typeof(TTarget), "target");
+            sourceParameter = Expression.Parameter(typeof(TSource), "source");
+        }
 
         /// <summary>
         /// Define a mapping from the source type to the target type. Certain limitations apply due to the usage of Expression Trees.
@@ -30,12 +41,49 @@ namespace Mapper
 
         public Mapper<TSource, TTarget> ForMember<TResult>(Expression<Func<TTarget, TResult>> target, Expression<Func<TSource, TResult>> source, IEqualityComparer<TResult>? comparer)
         {
+            if (mapAction != null)
+            {
+                throw new InvalidOperationException($"{nameof(Build)} already invoked");
+            }
+
             mapList.Add(new MemberMappingConfiguration
             {
                 Target = target,
                 Source = source,
                 Comparer = comparer
             });
+            return this;
+        }
+
+        public Mapper<TSource, TTarget> AutoMap(bool strict = true)
+        {
+            if (autoMapCalled)
+            {
+                throw new InvalidOperationException($"{nameof(AutoMap)} already invoked");
+            }
+
+            autoMapCalled = true;
+            strictAutoMap = strict;
+
+            return this;
+        }
+
+        public Mapper<TSource, TTarget> Except<TResult>(Expression<Func<TTarget, TResult>> target)
+        {
+            if (!autoMapCalled)
+            {
+                throw new InvalidOperationException($"{nameof(AutoMap)} not invoked");
+            }
+
+            if (target.Body is MemberExpression targetMember)
+            {
+                autoMapExceptions.Add(targetMember.Member);
+            }
+            else
+            {
+                throw new InvalidOperationException($"{nameof(target)} not an member access expression");
+            }
+
             return this;
         }
 
@@ -109,11 +157,63 @@ namespace Mapper
                 throw new InvalidOperationException("Mapper already built");
             }
 
+            if (autoMapCalled)
+            {
+                AutoMapCore();
+            }
+
+            BuildMapper();
+
+            return this;
+        }
+
+        private void AutoMapCore()
+        {
+            var memberTypes = new[] { MemberTypes.Property, MemberTypes.Field };
+            var targetMembers = typeof(TTarget)
+                .GetMembers()
+                .Where(x => memberTypes.Contains(x.MemberType));
+
+            var sourceType = typeof(TSource);
+            foreach (var targetMember in targetMembers)
+            {
+                if (autoMapExceptions.Contains(targetMember))
+                {
+                    continue;
+                }
+                var sourceMember = sourceType.GetMember(targetMember.Name);
+                if (sourceMember.Length != 1 && strictAutoMap)
+                {
+                    if (strictAutoMap)
+                    {
+                        throw new InvalidOperationException("Could not infer source member");
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                }
+                var sourceExpr = Expression.MakeMemberAccess(sourceParameter, sourceMember.Single());
+                var targetExpr = Expression.MakeMemberAccess(targetParameter, targetMember);
+
+                // We cannot invoke the ForMember directly, as we lack the types,
+                // so we construct it all using reflection at runtime.
+                var bindFlags = BindingFlags.Public | BindingFlags.Instance;
+                var forMemberMethod = typeof(Mapper<TTarget, TSource>)
+                    .GetMethods(bindFlags)
+                    .Where(x => x.Name == nameof(ForMember))
+                    .Single(x => x.GetParameters().Length == 2);
+                var forMemberSpecific = forMemberMethod.MakeGenericMethod(targetExpr.Type);
+                forMemberSpecific.Invoke(this, new object[] { Expression.Lambda(targetExpr, targetParameter), Expression.Lambda(sourceExpr, sourceParameter) });
+            }
+        }
+
+        private void BuildMapper()
+        {
+
             var mapExprList = new List<Expression>();
             var diffExprList = new List<Expression>();
 
-            var targetParameter = Expression.Parameter(typeof(TTarget), "target");
-            var sourceParameter = Expression.Parameter(typeof(TSource), "source");
             var comparerParameters = new Dictionary<object, Tuple<ParameterExpression, MethodInfo>>();
             var changedVar = Expression.Variable(typeof(bool), "changed");
             var diffListParameter = Expression.Parameter(typeof(List<MemberDifference>), "diff");
@@ -190,8 +290,6 @@ namespace Mapper
             var diffParams = new ParameterExpression[] { sourceParameter, targetParameter, diffListParameter }.Concat(compParams).ToArray();
             var diffLambda = Expression.Lambda(Expression.Block(diffExprList), diffParams);
             diffAction = diffLambda.Compile();
-
-            return this;
         }
 
         private Expression AssignmentBlock(Expression condition, ParameterExpression changedVar, Expression target, Expression source)
