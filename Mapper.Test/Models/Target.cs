@@ -15,5 +15,6 @@ namespace Mapper.Test.Models
         public int? IntNullable { get; set; }
         public DateTime DateTimeProp { get; set; }
         public DateTime? DateTimeNullableProp { get; set; }
+        public Point[] Points { get; set; }
     }
 }

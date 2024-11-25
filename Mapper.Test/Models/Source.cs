@@ -14,5 +14,6 @@ namespace Mapper.Test.Models
         public float FloatProp { get; set; }
         public DateTimeOffset? DateTimeOffsetNullableProp { get; set; }
         public DateTime DateTimeProp { get; set; }
+        public IEnumerable<Point> Points { get; set; }
     }
 }

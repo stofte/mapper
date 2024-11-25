@@ -5,7 +5,25 @@ namespace Mapper.Test
 {
     public class MapperTests
     {
-        Source source = new Source
+        static Point[] Points = new Point[]
+        {
+            new Point
+            {
+                Name = "p1",
+                X = 1,
+                Y = 2,
+                Radius = 3
+            },
+            new Point
+            {
+                Name = "p2",
+                X = 20,
+                Y = -1,
+                Radius = 500
+            }
+        };
+
+        static Source source = new Source
         {
             StringProp = "source",
             IntProp = 42,
@@ -13,6 +31,7 @@ namespace Mapper.Test
             FloatProp = 43.1f,
             DateTimeProp = DateTime.Now,
             DateTimeOffsetNullableProp = DateTimeOffset.Now,
+            Points = new List<Point>(Points)
         };
 
         [Fact]
@@ -122,6 +141,42 @@ namespace Mapper.Test
             Assert.Equal(target.DateTimeNullableProp, source.DateTimeOffsetNullableProp?.DateTime);
         }
 
+        [Fact]
+        public void Can_Map_IEnumerable_Point_Structs_To_Array_Of_Point_Structs()
+        {
+            var target = new Target();
 
+            var changed = new Mapper<Source, Target>()
+                .ForMember(t => t.Points, s => s.Points.ToArray())
+                .Build()
+                .Map(source, target);
+
+            Assert.True(changed);
+            Assert.Equal(source.Points.Count(), target.Points.Length);
+            var idx = 0;
+            Assert.All(target.Points, (p, i) =>
+            {
+                Assert.Equal(Points[i], p);
+                Assert.Equal(idx++, i);
+            });
+        }
+
+        [Fact]
+        public void Can_Not_Detect_That_Lists_Of_Structs_Are_The_Same()
+        {
+            var target = new Target
+            {
+                Points = new List<Point>(Points).ToArray()
+            };
+
+            var changed = new Mapper<Source, Target>()
+                .ForMember(t => t.Points, s => s.Points.ToArray())
+                .Build()
+                .Map(source, target);
+
+            // Ideally we would like to not think the lists are different.
+            // https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.sequenceequal
+            Assert.True(changed);
+        }
     }
 }
