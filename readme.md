@@ -56,7 +56,7 @@ Performance is measured against regular "hand-written" code which does the same 
       DefaultJob : .NET 7.0.14 (7.0.1423.51910), X64 RyuJIT AVX2
 
 
-| Method                        | Mean     | Error    | StdDev   |
-|------------------------------ |---------:|---------:|---------:|
-| Expression_Based_Mapping_Code | 97.45 ns | 0.851 ns | 2.022 ns |
-| Manually_Written_Mapping_Code | 97.68 ns | 1.754 ns | 1.950 ns |
+| Method                        | Mean     | Error   | StdDev  |
+|------------------------------ |---------:|--------:|--------:|
+| Expression_Based_Mapping_Code | 102.5 ns | 1.23 ns | 1.02 ns |
+| Manually_Written_Mapping_Code | 107.0 ns | 2.17 ns | 2.67 ns |
