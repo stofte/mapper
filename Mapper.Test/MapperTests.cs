@@ -369,5 +369,24 @@ namespace Mapper.Test
 
             Assert.Throws<InvalidOperationException>(() => mapper.ForMember(t => t.StringProp, s => s.StringProp));
         }
+
+        [Fact]
+        public void Mapping_DateTimeOffset_To_DateTime_Will_Fail_At_Runtime()
+        {
+            var source = new Source();
+            var target = new Target();
+
+            // DateTimeOffset to DateTime is tricky, since the generic parameter will end up
+            // being DateTimeOffset, since DateTimes are convertible to DateTimeOffsets,
+            // but not the other way around.
+            // Don't think there is any easy fix here, and at least the issue surfaces on "Build"
+            // and not on Map, so as early as possible.
+
+            var mapper = new Mapper<Source, Target>()
+                // If you wanted this to succeed at runtime, you'd have to write s.DateTimeOffsetProp.DateTime
+                .ForMember(t => t.DateTimeProp, s => s.DateTimeOffsetProp);
+
+            Assert.Throws<InvalidOperationException>(() => mapper.Build());
+        }
     }
 }

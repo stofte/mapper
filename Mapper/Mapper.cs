@@ -348,6 +348,12 @@ namespace Mapper
             // data loss, and so we instead throw an exception, and let the user cast manually
             if (isTarget && member is UnaryExpression unaryExpr && unaryExpr.NodeType == ExpressionType.Convert)
             {
+                // DateTime can be converted to DateTimeOffset, but if we want to 
+                if (member.Type == typeof(DateTimeOffset) || member.Type == typeof(DateTimeOffset?))
+                {
+                    throw new InvalidOperationException("Cannot map from DateTimeOffsets to DateTime");
+                }
+
                 throw new InvalidOperationException("Can not map between members without explicit casting");
             }
 
