@@ -85,7 +85,6 @@ namespace Mapper
             }
 
             var exprList = new List<Expression>();
-            Expression equalsEs = Expression.Constant(true);
             var targetParameter = Expression.Parameter(typeof(TTarget), "target");
             var sourceParameter = Expression.Parameter(typeof(TSource), "source");
             var comparerParameters = new Dictionary<object, Tuple<ParameterExpression, MethodInfo>>();
@@ -118,9 +117,8 @@ namespace Mapper
                 Expression? condition = null;
                 if (map.Comparer == null)
                 {
-                    // This is when we just do straight "x == y" for comparison
-                    equalsEs = Expression.AndAlso(equalsEs, Expression.NotEqual(newTarget, newSource));
-                    condition = Expression.Not(Expression.Equal(newTarget, newSource));
+                    // This is when we just do straight "x != y" for comparison
+                    condition = Expression.NotEqual(newTarget, newSource);
                 }
                 else
                 {
@@ -146,7 +144,6 @@ namespace Mapper
                     var comparerData = comparerParameters[map.Comparer];
 
                     condition = Expression.Not(Expression.Call(comparerData.Item1, comparerData.Item2, newTarget, newSource));
-                    equalsEs = Expression.AndAlso(equalsEs, condition);
                 }
 
                 AddAssignment(exprList, condition, changedVar, newTarget, newSource);
@@ -167,7 +164,8 @@ namespace Mapper
             try
             {
                 var assignChanged = Expression.Assign(changedVar, Expression.Constant(true));
-                var block = Expression.Block(assignChanged, Expression.Assign(target, source));
+                var assignTarget = Expression.Assign(target, source);
+                var block = Expression.Block(assignChanged, assignTarget);
                 var ifThen = Expression.IfThen(condition, block);
                 list.Add(ifThen);
             }
