@@ -32,7 +32,13 @@ namespace Mapper.Test
             DoubleProp = 21.620001, // Should become 21.62 when cast to float
             DateTimeProp = DateTime.Now,
             DateTimeOffsetNullableProp = DateTimeOffset.Now,
-            Circles = new List<Circle>(Circles)
+            Circles = new List<Circle>(Circles),
+            Cat = new Cat
+            {
+                Name = "Cat",
+                Color = "Pink",
+                Height = 100
+            }
         };
 
         [Fact]
@@ -223,6 +229,33 @@ namespace Mapper.Test
             // Ideally we would like to not think the lists are different.
             // https://learn.microsoft.com/en-us/dotnet/api/system.linq.enumerable.sequenceequal
             Assert.True(changed);
+        }
+
+        [Fact]
+        public void Can_Map_Real_Classes()
+        {
+            var target = new Target();
+            
+            var changed = new Mapper<Source, Target>()
+                .ForMember(t => t.Cat, s => s.Cat)
+                .Build()
+                .Map(source, target);
+
+            Assert.True(changed);
+            Assert.Equal(target.Cat, source.Cat);
+        }
+
+        [Fact]
+        public void Does_Not_Map_Same_Class_Instance()
+        {
+            var target = new Target { Cat = source.Cat };
+
+            var changed = new Mapper<Source, Target>()
+                .ForMember(t => t.Cat, s => s.Cat)
+                .Build()
+                .Map(source, target);
+
+            Assert.False(changed);
         }
     }
 }

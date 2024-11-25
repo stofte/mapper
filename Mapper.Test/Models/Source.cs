@@ -17,5 +17,6 @@ namespace Mapper.Test.Models
         public DateTimeOffset? DateTimeOffsetNullableProp { get; set; }
         public DateTime DateTimeProp { get; set; }
         public IEnumerable<Circle> Circles { get; set; }
+        public Cat Cat { get; set; }
     }
 }

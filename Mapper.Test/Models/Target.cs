@@ -19,5 +19,6 @@ namespace Mapper.Test.Models
         public DateTime DateTimeProp { get; set; }
         public DateTime? DateTimeNullableProp { get; set; }
         public Circle[] Circles { get; set; }
+        public Cat Cat { get; set; }
     }
 }
