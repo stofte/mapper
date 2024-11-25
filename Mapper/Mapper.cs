@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Metadata;
@@ -13,17 +14,32 @@ namespace Mapper
     /// <typeparam name="TTarget">Type to map to</typeparam>
     public class Mapper<TSource, TTarget>
     {
-        IDictionary<Expression, Expression> mapsExpressions = new Dictionary<Expression, Expression>();
+        List<MemberMappingConfiguration> mapList = new List<MemberMappingConfiguration>();
+        object[] comparerList = new object[0];
 
-        Action<TSource, TTarget>? mapAction = null;
-        Func<TSource, TTarget, bool>? equalsAction = null;
+        Delegate? mapAction = null;
 
         /// <summary>
         /// Define a mapping from the source type to the target type. Certain limitations apply due to the usage of Expression Trees.
         /// </summary>
         public Mapper<TSource, TTarget> ForMember<TResult>(Expression<Func<TTarget, TResult>> target, Expression<Func<TSource, TResult>> source)
         {
-            mapsExpressions.Add(target, source);
+            mapList.Add(new MemberMappingConfiguration
+            {
+                Target = target,
+                Source = source
+            });
+            return this;
+        }
+
+        public Mapper<TSource, TTarget> ForMember<TResult>(Expression<Func<TTarget, TResult>> target, Expression<Func<TSource, TResult>> source, IEqualityComparer<TResult> comparer)
+        {
+            mapList.Add(new MemberMappingConfiguration
+            {
+                Target = target,
+                Source = source,
+                Comparer = comparer
+            });
             return this;
         }
 
@@ -32,18 +48,30 @@ namespace Mapper
         /// </summary>
         public bool Map(TSource source, TTarget target)
         {
-            if (mapAction == null || equalsAction == null)
+            if (mapAction == null)
             {
                 throw new InvalidOperationException("Mapper not built");
             }
 
-            if (!equalsAction(source, target))
+            if (source == null)
             {
-                mapAction(source, target);
-                return true;
+                throw new ArgumentNullException(nameof(source));
             }
 
-            return false;
+            if (target == null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+
+            var mapParams = new object[] { source, target }.Concat(comparerList).ToArray();
+            var changedRes = mapAction.DynamicInvoke(mapParams);
+
+            if (changedRes == null)
+            {
+                throw new InvalidOperationException("Internal error");
+            }
+
+            return (bool)changedRes;
         }
 
         /// <summary>
@@ -60,10 +88,13 @@ namespace Mapper
             Expression equalsEs = Expression.Constant(true);
             var targetParameter = Expression.Parameter(typeof(TTarget), "target");
             var sourceParameter = Expression.Parameter(typeof(TSource), "source");
+            var comparerParameters = new Dictionary<object, Tuple<ParameterExpression, MethodInfo>>();
+            var changedVar = Expression.Variable(typeof(bool), "changed");
+            exprList.Add(Expression.Assign(changedVar, Expression.Constant(false)));
 
-            foreach (var map in mapsExpressions)
+            foreach (var map in mapList)
             {
-                var targetBody = GetExpressionBodyFromDelegateExpression(map.Key, isTarget: true);
+                var targetBody = GetExpressionBodyFromDelegateExpression(map.Target, isTarget: true);
                 var target = targetBody as MemberExpression;
                 if (target == null)
                 {
@@ -71,7 +102,7 @@ namespace Mapper
                 }
                 var targetModifier = new ParameterModifier<TTarget>(targetParameter);
                 var newTarget = targetModifier.Modify(target);
-                var sourceBody = GetExpressionBodyFromDelegateExpression(map.Value, isTarget: false);
+                var sourceBody = GetExpressionBodyFromDelegateExpression(map.Source, isTarget: false);
                 var sourceModifier = new ParameterModifier<TSource>(sourceParameter);
                 var newSource = sourceModifier.Modify(sourceBody);
 
@@ -84,24 +115,61 @@ namespace Mapper
                     }
                 }
 
-                AddAssignment(exprList, newTarget, newSource);
-                equalsEs = Expression.AndAlso(equalsEs, Expression.Equal(newTarget, newSource));
+                Expression condition = null;
+                if (map.Comparer == null)
+                {
+                    // This is when we just do straight "x == y" for comparison
+                    equalsEs = Expression.AndAlso(equalsEs, Expression.NotEqual(newTarget, newSource));
+                    condition = Expression.Not(Expression.Equal(newTarget, newSource));
+                }
+                else
+                {
+                    // See if we already have a comparer instance passed in here:
+                    if (!comparerParameters.ContainsKey(map.Comparer))
+                    {
+                        var compType = map.Comparer.GetType();
+                        var equalityCompInterface = compType.GetInterface("IEqualityComparer`1");
+                        if (equalityCompInterface == null)
+                        {
+                            throw new InvalidOperationException("Could not find IEqualityComparer");
+                        }
+                        var foo = compType.GetMethods();
+                        var flags = BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.Instance;
+                        var equalsMethod = compType.GetMethod("Equals", flags);
+                        if (equalsMethod == null)
+                        {
+                            throw new InvalidOperationException("Invalid IEqualityComparer");
+                        }
+                        comparerParameters.Add(map.Comparer, Tuple.Create(Expression.Parameter(compType), equalsMethod));
+                    }
+
+                    var comparerData = comparerParameters[map.Comparer];
+
+                    condition = Expression.Not(Expression.Call(comparerData.Item1, comparerData.Item2, newTarget, newSource));
+                    equalsEs = Expression.AndAlso(equalsEs, condition);
+                }
+
+                AddAssignment(exprList, condition, changedVar, newTarget, newSource);
             }
 
-            var mapLambda = Expression.Lambda<Action<TSource, TTarget>>(Expression.Block(exprList), new ParameterExpression[] { sourceParameter, targetParameter });
+            exprList.Add(changedVar);
+            comparerList = comparerParameters.OrderBy(x => x.Key).Select(x => x.Key).ToArray();
+            var compParams = comparerParameters.OrderBy(x => x.Key).Select(x => x.Value.Item1);
+            var mapParams = new ParameterExpression[] { sourceParameter, targetParameter }.Concat(compParams).ToArray();
+            var mapLambda = Expression.Lambda(Expression.Block(new ParameterExpression[] { changedVar }, exprList), mapParams);
             mapAction = mapLambda.Compile();
-
-            var equalsLambda = Expression.Lambda<Func<TSource, TTarget, bool>>(equalsEs, new ParameterExpression[] { sourceParameter, targetParameter });
-            equalsAction = equalsLambda.Compile();
 
             return this;
         }
 
-        private void AddAssignment(List<Expression> list, Expression target, Expression source)
+        private void AddAssignment(List<Expression> list, Expression condition, ParameterExpression changedVar, Expression target, Expression source)
         {
             try
             {
-                list.Add(Expression.Assign(target, source));
+                var assignChanged = Expression.Assign(changedVar, Expression.Constant(true));
+                var block = Expression.Block(assignChanged, Expression.Assign(target, source));
+                var ifThen = Expression.IfThen(condition, block);
+                list.Add(ifThen);
             }
             catch (ArgumentException exn) when (exn?.TargetSite?.Name == "RequiresCanWrite")
             {
@@ -159,6 +227,13 @@ namespace Mapper
                 }
                 return base.VisitMember(node);
             }
+        }
+
+        private class MemberMappingConfiguration
+        {
+            public Expression Target { get; set; }
+            public Expression Source { get; set; }
+            public object Comparer { get; set; } 
         }
     }
 }

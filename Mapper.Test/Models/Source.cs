@@ -18,5 +18,6 @@ namespace Mapper.Test.Models
         public DateTime DateTimeProp { get; set; }
         public IEnumerable<Circle> Circles { get; set; }
         public Cat Cat { get; set; }
+        public Cat OtherCat { get; set; }
     }
 }

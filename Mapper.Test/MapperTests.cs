@@ -38,6 +38,12 @@ namespace Mapper.Test
                 Name = "Cat",
                 Color = "Pink",
                 Height = 100
+            },
+            OtherCat = new Cat
+            {
+                Name = "Garfield",
+                Color = "Yellow",
+                Height = 101
             }
         };
 
@@ -270,6 +276,32 @@ namespace Mapper.Test
 
             Assert.True(changed);
             Assert.Equal(target.Cat.Name, source.Cat.Name);
+        }
+
+        [Fact]
+        public void Does_Map_Different_Class_Instance_With_EqualityComparer()
+        {
+            var target = new Target
+            {
+                // First source cat SHOULD NOT be mapped, as it has the same name as the target cat
+                Cat = new Cat { Name = source.Cat.Name, Color = "Yellow", Height = 1 },
+                // Second source cat SHOULD be mapped, as it has different name then second target cat
+                SecondCat = new Cat { Name = "Foo" }
+            };
+
+            var targetFirstCat = target.Cat;
+            var targetSecondCat = target.SecondCat;
+
+            var cc = new CatComparer();
+            var changed = new Mapper<Source, Target>()
+                .ForMember(t => t.Cat, s => s.Cat, cc)
+                .ForMember(t => t.SecondCat, s => s.OtherCat, cc)
+                .Build()
+                .Map(source, target);
+
+            Assert.True(changed);
+            Assert.NotEqual(source.Cat, target.Cat);
+            Assert.Equal(targetFirstCat, target.Cat);
         }
     }
 }
