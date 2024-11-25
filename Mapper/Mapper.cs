@@ -21,7 +21,7 @@ namespace Mapper
         /// <summary>
         /// Define a mapping from the source type to the target type. Certain limitations apply due to the usage of Expression Trees.
         /// </summary>
-        public Mapper<TSource, TTarget> ForMember<TTargetResult, TSourceResult>(Expression<Func<TTarget, TTargetResult>> target, Expression<Func<TSource, TSourceResult>> source)
+        public Mapper<TSource, TTarget> ForMember<TResult>(Expression<Func<TTarget, TResult>> target, Expression<Func<TSource, TResult>> source)
         {
             mapsExpressions.Add(target, source);
             return this;
@@ -63,7 +63,7 @@ namespace Mapper
 
             foreach (var map in mapsExpressions)
             {
-                var targetBody = GetExpressionBodyFromDelegateExpression(map.Key);
+                var targetBody = GetExpressionBodyFromDelegateExpression(map.Key, isTarget: true);
                 var target = targetBody as MemberExpression;
                 if (target == null)
                 {
@@ -71,7 +71,7 @@ namespace Mapper
                 }
                 var targetModifier = new ParameterModifier<TTarget>(targetParameter);
                 var newTarget = targetModifier.Modify(target);
-                var sourceBody = GetExpressionBodyFromDelegateExpression(map.Value);
+                var sourceBody = GetExpressionBodyFromDelegateExpression(map.Value, isTarget: false);
                 var sourceModifier = new ParameterModifier<TSource>(sourceParameter);
                 var newSource = sourceModifier.Modify(sourceBody);
 
@@ -113,15 +113,27 @@ namespace Mapper
             }
         }
 
-        private Expression GetExpressionBodyFromDelegateExpression(Expression target)
+        private Expression GetExpressionBodyFromDelegateExpression(Expression expr, bool isTarget)
         {
-            var bodyProp = target.GetType().GetProperty("Body");
-            var body = bodyProp?.GetValue(target);
+            var bodyProp = expr.GetType().GetProperty("Body");
+            var body = bodyProp?.GetValue(expr);
             var member = body as Expression;
             if (member == null)
             {
                 throw new InvalidOperationException("Could not parse expression");
             }
+
+            // When the to/from functions use implicitly convertible types (eg float to doubles),
+            // the use of generic constraints (that both functions must return TResult) will cause
+            // the generated expression to contain a Convert node. This will always appear on the
+            // smaller type (eg the "float" property from above), and if this is the target property,
+            // we could simply move the convert to the source property, but this could lead to
+            // data loss, and so we instead throw an exception, and let the user cast manually
+            if (isTarget && member is UnaryExpression unaryExpr && unaryExpr.NodeType == ExpressionType.Convert)
+            {
+                throw new InvalidOperationException("Can not map between members without explicit casting");
+            }
+
             return member;
         }
 

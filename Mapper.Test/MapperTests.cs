@@ -28,7 +28,8 @@ namespace Mapper.Test
             StringProp = "source",
             IntProp = 42,
             IntNullableProp = 44,
-            FloatProp = 43.1f,
+            FloatProp = 123.1f, // Should become 123.0999984741211 when cast to double
+            DoubleProp = 21.620001, // Should become 21.62 when cast to float
             DateTimeProp = DateTime.Now,
             DateTimeOffsetNullableProp = DateTimeOffset.Now,
             Points = new List<Point>(Points)
@@ -64,10 +65,35 @@ namespace Mapper.Test
                 .Map(source, target);
 
             Assert.True(changed);
-            Assert.Equal(target.IntProp, (int)source.FloatProp);
+            Assert.Equal((int)source.FloatProp, target.IntProp);
         }
 
+        [Fact]
+        public void Can_Map_Between_Different_Types_With_Implicit_Conversions()
+        {
+            var target = new Target();
 
+            var changed = new Mapper<Source, Target>()
+                .ForMember(t => t.DoubleProp, s => s.FloatProp)
+                .ForMember(t => t.LongProp, s => s.IntProp)
+                .Build()
+                .Map(source, target);
+
+            Assert.True(changed);
+            Assert.Equal(source.FloatProp, target.DoubleProp);
+            Assert.Equal(source.IntProp, target.LongProp);
+        }
+
+        [Fact]
+        public void Can_Not_Map_Between_Different_Types_With_Explicit_Conversions()
+        {
+            var target = new Target();
+
+            var m = new Mapper<Source, Target>()
+                .ForMember(t => t.FloatProp, s => s.DoubleProp);
+
+            Assert.Throws<InvalidOperationException>(() => m.Build());
+        }
 
         [Fact]
         public void Can_Map_Int_Properties_To_Nullable_Int_Property()
@@ -79,7 +105,7 @@ namespace Mapper.Test
                 .Map(source, target);
 
             Assert.True(changed);
-            Assert.Equal(target.IntNullable, source.IntProp);
+            Assert.Equal(source.IntProp, target.IntNullable);
         }
 
         [Fact]
@@ -92,7 +118,7 @@ namespace Mapper.Test
                 .Map(source, target);
 
             Assert.True(changed);
-            Assert.Equal(target.IntProp, source.IntProp);
+            Assert.Equal(source.IntProp, target.IntProp);
         }
 
         [Fact]
@@ -108,8 +134,8 @@ namespace Mapper.Test
             var changed = m.Map(source, target);
 
             Assert.False(changed);
-            Assert.Equal(target.IntProp, source.IntProp);
-            Assert.Equal(target.StringProp, source.StringProp);
+            Assert.Equal(source.IntProp, target.IntProp);
+            Assert.Equal(source.StringProp, target.StringProp);
         }
 
         [Fact]
@@ -125,8 +151,8 @@ namespace Mapper.Test
             var changed = m.Map(source, target);
 
             Assert.True(changed);
-            Assert.Equal(target.IntProp, source.IntProp);
-            Assert.Equal(target.StringProp, source.StringProp);
+            Assert.Equal(source.IntProp, target.IntProp);
+            Assert.Equal(source.StringProp, target.StringProp);
         }
 
         [Fact]
@@ -142,9 +168,9 @@ namespace Mapper.Test
                 .Map(source, target);
 
             Assert.True(changed);
-            Assert.Equal(target.IntField, source.IntProp);
-            Assert.Equal(target.StringProp, source.StringProp);
-            Assert.Equal(target.DateTimeProp, source.DateTimeProp);
+            Assert.Equal(source.IntProp, target.IntField);
+            Assert.Equal(source.StringProp, target.StringProp);
+            Assert.Equal(source.DateTimeProp, target.DateTimeProp);
         }
 
         [Fact]
@@ -158,7 +184,7 @@ namespace Mapper.Test
                 .Map(source, target);
 
             Assert.True(changed);
-            Assert.Equal(target.DateTimeNullableProp, source.DateTimeOffsetNullableProp?.DateTime);
+            Assert.Equal(source.DateTimeOffsetNullableProp?.DateTime, target.DateTimeNullableProp);
         }
 
         [Fact]
@@ -172,7 +198,7 @@ namespace Mapper.Test
                 .Map(source, target);
 
             Assert.True(changed);
-            Assert.Equal(source.Points.Count(), target.Points.Length);
+            Assert.Equal(target.Points.Length, source.Points.Count());
             var idx = 0;
             Assert.All(target.Points, (p, i) =>
             {
