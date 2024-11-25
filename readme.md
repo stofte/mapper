@@ -25,7 +25,6 @@ var changed = mapper.Map(source, target);
 
 Briefly:
 
-
 - Create an instance using the desired type mappings
 - Call `ForMember` to define the mappings you want included any number of times
 - Call `Build` one time to finish initializing the instance
@@ -33,7 +32,7 @@ Briefly:
 
 ## Limitations
 
-Since `Mapper` uses expression trees there's alot of [limitations](https://learn.microsoft.com/en-us/dotnet/csharp/advanced-topics/expression-trees/#limitations) in the code that can be written inside the delegates. The most notable expression derived ones are:
+Since `Mapper` uses expression trees there's alot of [limitations](https://learn.microsoft.com/en-us/dotnet/csharp/advanced-topics/expression-trees/#limitations) in the code that can be written inside the delegates. Some notable expression derived ones are:
 
 - No null-coalescing/propagating operators
 - No string interpolations
@@ -42,7 +41,9 @@ Since `Mapper` uses expression trees there's alot of [limitations](https://learn
 
 Other limitations:
 
-- Regular in-equality (`!=`) is used to determine if values are different between source and target.
+- Regular in-equality (`!=`) is used to determine if values are different between source and target
+- The `ForMember` allows any types in either target or source parameters. This will result
+in runtime errors
 
 ## Benchmarks
 
