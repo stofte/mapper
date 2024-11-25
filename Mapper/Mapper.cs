@@ -24,15 +24,10 @@ namespace Mapper
         /// </summary>
         public Mapper<TSource, TTarget> ForMember<TResult>(Expression<Func<TTarget, TResult>> target, Expression<Func<TSource, TResult>> source)
         {
-            mapList.Add(new MemberMappingConfiguration
-            {
-                Target = target,
-                Source = source
-            });
-            return this;
+            return ForMember(target, source, null);
         }
 
-        public Mapper<TSource, TTarget> ForMember<TResult>(Expression<Func<TTarget, TResult>> target, Expression<Func<TSource, TResult>> source, IEqualityComparer<TResult> comparer)
+        public Mapper<TSource, TTarget> ForMember<TResult>(Expression<Func<TTarget, TResult>> target, Expression<Func<TSource, TResult>> source, IEqualityComparer<TResult>? comparer)
         {
             mapList.Add(new MemberMappingConfiguration
             {
