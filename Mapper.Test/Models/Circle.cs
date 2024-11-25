@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Mapper.Test.Models
 {
-    public struct Point
+    public struct Circle
     {
         public string Name { get; set; }
         public double X { get; set; }

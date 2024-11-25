@@ -5,18 +5,18 @@ namespace Mapper.Test
 {
     public class MapperTests
     {
-        static Point[] Points = new Point[]
+        static Circle[] Circles = new Circle[]
         {
-            new Point
+            new Circle
             {
-                Name = "p1",
+                Name = "c1",
                 X = 1,
                 Y = 2,
                 Radius = 3
             },
-            new Point
+            new Circle
             {
-                Name = "p2",
+                Name = "c2",
                 X = 20,
                 Y = -1,
                 Radius = 500
@@ -32,7 +32,7 @@ namespace Mapper.Test
             DoubleProp = 21.620001, // Should become 21.62 when cast to float
             DateTimeProp = DateTime.Now,
             DateTimeOffsetNullableProp = DateTimeOffset.Now,
-            Points = new List<Point>(Points)
+            Circles = new List<Circle>(Circles)
         };
 
         [Fact]
@@ -188,21 +188,21 @@ namespace Mapper.Test
         }
 
         [Fact]
-        public void Can_Map_IEnumerable_Point_Structs_To_Array_Of_Point_Structs()
+        public void Can_Map_IEnumerable_Structs_To_Array_Of_Structs()
         {
             var target = new Target();
 
             var changed = new Mapper<Source, Target>()
-                .ForMember(t => t.Points, s => s.Points.ToArray())
+                .ForMember(t => t.Circles, s => s.Circles.ToArray())
                 .Build()
                 .Map(source, target);
 
             Assert.True(changed);
-            Assert.Equal(target.Points.Length, source.Points.Count());
+            Assert.Equal(target.Circles.Length, source.Circles.Count());
             var idx = 0;
-            Assert.All(target.Points, (p, i) =>
+            Assert.All(target.Circles, (p, i) =>
             {
-                Assert.Equal(Points[i], p);
+                Assert.Equal(Circles[i], p);
                 Assert.Equal(idx++, i);
             });
         }
@@ -212,11 +212,11 @@ namespace Mapper.Test
         {
             var target = new Target
             {
-                Points = new List<Point>(Points).ToArray()
+                Circles = new List<Circle>(Circles).ToArray()
             };
 
             var changed = new Mapper<Source, Target>()
-                .ForMember(t => t.Points, s => s.Points.ToArray())
+                .ForMember(t => t.Circles, s => s.Circles.ToArray())
                 .Build()
                 .Map(source, target);
 

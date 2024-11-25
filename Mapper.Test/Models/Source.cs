@@ -16,6 +16,6 @@ namespace Mapper.Test.Models
         public long LongProp { get; set; }
         public DateTimeOffset? DateTimeOffsetNullableProp { get; set; }
         public DateTime DateTimeProp { get; set; }
-        public IEnumerable<Point> Points { get; set; }
+        public IEnumerable<Circle> Circles { get; set; }
     }
 }

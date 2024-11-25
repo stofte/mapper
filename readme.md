@@ -42,8 +42,7 @@ Since `Mapper` uses expression trees there's alot of [limitations](https://learn
 Other limitations:
 
 - Regular in-equality (`!=`) is used to determine if values are different between source and target
-- The `ForMember` allows any types in either target or source parameters. This will result
-in runtime errors
+- The `ForMember` constrains types, but can get it wrong, notably when the target property can be implicitly cast to the source property. So if you wan't to map an `double` to a `float`, the library will allow this, but this will result in an runtime exception when calling `Build`.
 
 ## Benchmarks
 
