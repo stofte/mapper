@@ -18,6 +18,7 @@ namespace Mapper
         object[] comparerList = Array.Empty<object>();
 
         Delegate? mapAction = null;
+        Delegate? diffAction = null;
 
         /// <summary>
         /// Define a mapping from the source type to the target type. Certain limitations apply due to the usage of Expression Trees.
@@ -70,6 +71,35 @@ namespace Mapper
         }
 
         /// <summary>
+        /// Returns a list of properties, where the values differ.
+        /// No data is mapped with this method.
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<MemberDifference> Diff(TSource source, TTarget target)
+        {
+            if (diffAction == null)
+            {
+                throw new InvalidOperationException("Mapper not built");
+            }
+
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            if (target == null)
+            {
+                throw new ArgumentNullException(nameof(target));
+            }
+
+            var diffList = new List<MemberDifference>();
+            var diffParams = new object[] { source, target, diffList }.Concat(comparerList).ToArray();
+            diffAction.DynamicInvoke(diffParams);
+
+            return diffList;
+        }
+
+        /// <summary>
         /// Builds the mapper. Must be called before usage.
         /// </summary>
         public Mapper<TSource, TTarget> Build()
@@ -79,12 +109,17 @@ namespace Mapper
                 throw new InvalidOperationException("Mapper already built");
             }
 
-            var exprList = new List<Expression>();
+            var mapExprList = new List<Expression>();
+            var diffExprList = new List<Expression>();
+
             var targetParameter = Expression.Parameter(typeof(TTarget), "target");
             var sourceParameter = Expression.Parameter(typeof(TSource), "source");
             var comparerParameters = new Dictionary<object, Tuple<ParameterExpression, MethodInfo>>();
             var changedVar = Expression.Variable(typeof(bool), "changed");
-            exprList.Add(Expression.Assign(changedVar, Expression.Constant(false)));
+            var diffListParameter = Expression.Parameter(typeof(List<MemberDifference>), "diff");
+            var memberDiffCtor = typeof(MemberDifference).GetConstructor(new Type[] { typeof(string), typeof(object), typeof(object) });
+            var listAddMethod = typeof(List<MemberDifference>).GetMethod("Add");
+            mapExprList.Add(Expression.Assign(changedVar, Expression.Constant(false)));
 
             foreach (var map in mapList)
             {
@@ -141,20 +176,25 @@ namespace Mapper
                     condition = Expression.Not(Expression.Call(comparerData.Item1, comparerData.Item2, newTarget, newSource));
                 }
 
-                AddAssignment(exprList, condition, changedVar, newTarget, newSource);
+                mapExprList.Add(AssignmentBlock(condition, changedVar, newTarget, newSource));
+                diffExprList.Add(DiffMemberBlock(condition, diffListParameter, listAddMethod, memberDiffCtor, newTarget, newSource));
             }
 
-            exprList.Add(changedVar);
+            mapExprList.Add(changedVar);
             comparerList = comparerParameters.OrderBy(x => x.Key).Select(x => x.Key).ToArray();
             var compParams = comparerParameters.OrderBy(x => x.Key).Select(x => x.Value.Item1);
             var mapParams = new ParameterExpression[] { sourceParameter, targetParameter }.Concat(compParams).ToArray();
-            var mapLambda = Expression.Lambda(Expression.Block(new ParameterExpression[] { changedVar }, exprList), mapParams);
+            var mapLambda = Expression.Lambda(Expression.Block(new ParameterExpression[] { changedVar }, mapExprList), mapParams);
             mapAction = mapLambda.Compile();
+
+            var diffParams = new ParameterExpression[] { sourceParameter, targetParameter, diffListParameter }.Concat(compParams).ToArray();
+            var diffLambda = Expression.Lambda(Expression.Block(diffExprList), diffParams);
+            diffAction = diffLambda.Compile();
 
             return this;
         }
 
-        private void AddAssignment(List<Expression> list, Expression condition, ParameterExpression changedVar, Expression target, Expression source)
+        private Expression AssignmentBlock(Expression condition, ParameterExpression changedVar, Expression target, Expression source)
         {
             try
             {
@@ -162,7 +202,7 @@ namespace Mapper
                 var assignTarget = Expression.Assign(target, source);
                 var block = Expression.Block(assignChanged, assignTarget);
                 var ifThen = Expression.IfThen(condition, block);
-                list.Add(ifThen);
+                return ifThen;
             }
             catch (ArgumentException exn) when (exn?.TargetSite?.Name == "RequiresCanWrite")
             {
@@ -171,6 +211,24 @@ namespace Mapper
             catch (ArgumentException exn) when (exn?.TargetSite?.Name == "Assign" && exn.Message.Contains("cannot be used for assignment to type", StringComparison.InvariantCultureIgnoreCase))
             {
                 throw new InvalidOperationException($"Cannot map from type '{source.Type}' to type '{target.Type}'");
+            }
+        }
+
+        private Expression DiffMemberBlock(Expression condition, ParameterExpression diffVar, MethodInfo listAddMethod, ConstructorInfo memberDiffCtor, Expression target, Expression source)
+        {
+            if (target is MemberExpression targetMember)
+            {
+                var name = Expression.Constant(targetMember.Member.Name);
+                var targetConv = Expression.Convert(target, typeof(object));
+                var sourceConv = Expression.Convert(source, typeof(object));
+                var newMemberDiff = Expression.New(memberDiffCtor, name, targetConv, sourceConv);
+                var updateDiff = Expression.Call(diffVar, listAddMethod, newMemberDiff);
+                var ifThen = Expression.IfThen(condition, updateDiff);
+                return ifThen;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Target expression was not a member");
             }
         }
 
@@ -226,7 +284,21 @@ namespace Mapper
         {
             public Expression Target { get; set; }
             public Expression Source { get; set; }
-            public object Comparer { get; set; } 
+            public object? Comparer { get; set; } 
+        }
+
+        public class MemberDifference
+        {
+            public MemberDifference(string name, object? target, object? source)
+            {
+                Name = name;
+                Target = target;
+                Source = source;
+            }
+
+            public string Name { get; set; }
+            public object? Target { get; set; }
+            public object? Source { get; set; }
         }
     }
 }

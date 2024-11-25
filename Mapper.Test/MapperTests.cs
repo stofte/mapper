@@ -303,5 +303,22 @@ namespace Mapper.Test
             Assert.NotEqual(source.Cat, target.Cat);
             Assert.Equal(targetFirstCat, target.Cat);
         }
+
+        [Fact]
+        public void Can_Perform_Diff_And_Return_Information_About_Difference()
+        {
+            var target = new Target();
+
+            var diffList = new Mapper<Source, Target>()
+                .ForMember(t => t.IntField, s => s.IntProp)
+                .Build()
+                .Diff(source, target);
+
+            Assert.Single(diffList);
+            var diff = diffList.Single();
+            Assert.Equal("IntField", diff.Name);
+            Assert.Equal(0, diff.Target);
+            Assert.Equal(42, diff.Source);
+        }
     }
 }
